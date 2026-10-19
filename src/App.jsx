@@ -216,9 +216,19 @@ export default function App() {
   }, [loading, activeTab, searchQuery, shouldScroll]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setIsAuthenticated(true);
+        try {
+          const secretsSnap = await getDoc(doc(db, 'config', 'secrets'));
+          if (secretsSnap.exists()) {
+            const data = secretsSnap.data();
+            setTempSettings(prev => ({ ...prev, imageApiKey: data.imageApiKey || '' }));
+            setSettings(prev => ({ ...prev, imageApiKey: data.imageApiKey || '' }));
+          }
+        } catch (e) {
+          console.error(e);
+        }
       } else {
         setIsAuthenticated(false);
       }
@@ -468,14 +478,18 @@ export default function App() {
         .map(url => url.trim())
         .filter(Boolean);
 
-      const finalSettings = {
-        ...tempSettings,
+      const { imageApiKey, ...publicSettings } = tempSettings;
+
+      const finalPublicSettings = {
+        ...publicSettings,
         heroImages: heroImagesArray
       };
 
-      await setDoc(doc(db, 'config', 'general'), finalSettings);
-      setSettings(finalSettings);
-      showNotification('Paramètres enregistrés avec succès');
+      await setDoc(doc(db, 'config', 'general'), finalPublicSettings);
+      await setDoc(doc(db, 'config', 'secrets'), { imageApiKey: imageApiKey || '' });
+
+      setSettings(tempSettings);
+      showNotification('Paramètres et clés enregistrés en toute sécurité');
     } catch (err) {
       showNotification('Erreur de sauvegarde : ' + err.message, 'error');
     } finally {
