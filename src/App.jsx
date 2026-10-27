@@ -97,6 +97,7 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [modalImageIndex, setModalImageIndex] = useState(0);
   const [modalImageLoaded, setModalImageLoaded] = useState(false);
+  const [imageErrorState, setImageErrorState] = useState({});
 
   const [notification, setNotification] = useState(null);
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
@@ -626,6 +627,7 @@ export default function App() {
 
   const renderProjectCard = (project, uniqueKey) => {
     const isLoaded = imageLoadedState[`${project.id}_${uniqueKey}`];
+    const hasError = imageErrorState[`${project.id}_${uniqueKey}`];
     const categoryObj = settings.categories?.find(c => c.id === project.category);
     const isLogo = project.category === 'logo';
     const firstImage = (project.images && project.images[0]) || project.image;
@@ -638,22 +640,33 @@ export default function App() {
         className="shrink-0 w-[300px] sm:w-[350px] group cursor-pointer rounded-2xl bg-[#0f0f12] border border-zinc-800/60 hover:border-zinc-700 overflow-hidden transition-all duration-300 flex flex-col shadow-lg mx-3 select-none"
       >
         <div className="relative aspect-[16/10] w-full bg-gradient-to-b from-zinc-900 to-zinc-950 flex items-center justify-center p-5 overflow-hidden border-b border-zinc-800/40 pointer-events-none">
-          {!isLoaded && (
+          {!isLoaded && !hasError && (
             <div className="absolute inset-0 bg-zinc-900/90 animate-pulse flex flex-col items-center justify-center gap-2">
               <ImageIcon className="w-6 h-6 text-zinc-700 animate-pulse" />
               <span className="text-[10px] font-mono text-zinc-600">Chargement...</span>
             </div>
           )}
-          <img
-            src={firstImage}
-            alt={project.title}
-            draggable={false}
-            onLoad={() => setImageLoadedState(prev => ({ ...prev, [`${project.id}_${uniqueKey}`]: true }))}
-            className={`transition-all duration-700 group-hover:scale-105 ${isLogo
-              ? 'max-h-28 max-w-[75%] object-contain drop-shadow-md'
-              : 'w-full h-full object-cover'
-              } ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-          />
+
+          {hasError ? (
+            <div className="flex flex-col items-center justify-center gap-2 text-zinc-600">
+              <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                <ImageIcon className="w-5 h-5 text-zinc-500" />
+              </div>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Image indisponible</span>
+            </div>
+          ) : (
+            <img
+              src={firstImage}
+              alt={project.title}
+              draggable={false}
+              onLoad={() => setImageLoadedState(prev => ({ ...prev, [`${project.id}_${uniqueKey}`]: true }))}
+              onError={() => setImageErrorState(prev => ({ ...prev, [`${project.id}_${uniqueKey}`]: true }))}
+              className={`transition-all duration-700 group-hover:scale-105 ${isLogo
+                ? 'max-h-28 max-w-[75%] object-contain drop-shadow-md'
+                : 'w-full h-full object-cover'
+                } ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          )}
 
           <div className="absolute top-3 left-3 flex items-center gap-2">
             <span className="px-2.5 py-1 text-[10px] font-mono tracking-wider uppercase rounded-md bg-zinc-950/80 backdrop-blur-md border border-zinc-800/80 text-zinc-300">
@@ -661,7 +674,7 @@ export default function App() {
             </span>
           </div>
 
-          {hasMultipleImages && (
+          {hasMultipleImages && !hasError && (
             <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-zinc-950/80 backdrop-blur-md border border-zinc-800/80 text-[10px] font-mono text-zinc-400 flex items-center gap-1">
               <Layers className="w-3 h-3" />
               <span>{project.images.length}</span>
@@ -718,10 +731,11 @@ export default function App() {
       <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur-md bg-[#09090b]/80 border-b border-zinc-800/80">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <a href="#" className="flex items-center gap-3 group">
-            {settings.avatarLogo ? (
+            {settings.avatarLogo && !imageErrorState['header_logo'] ? (
               <img
                 src={settings.avatarLogo}
                 alt={settings.name}
+                onError={() => setImageErrorState(prev => ({ ...prev, header_logo: true }))}
                 className="w-10 h-10 rounded-xl object-contain bg-zinc-900 border border-zinc-700/60 p-1 group-hover:border-zinc-500 transition-colors"
               />
             ) : (
@@ -902,6 +916,8 @@ export default function App() {
                   {filteredProjects.map((p) => {
                     const firstImg = (p.images && p.images[0]) || p.image;
                     const isLogo = p.category === 'logo';
+                    const hasError = imageErrorState[`drawer_${p.id}`];
+
                     return (
                       <div
                         key={`drawer_grid_${p.id}`}
@@ -909,11 +925,19 @@ export default function App() {
                         className="group cursor-pointer rounded-xl bg-zinc-900/40 border border-zinc-800/60 hover:border-zinc-700 overflow-hidden flex flex-col transition-all"
                       >
                         <div className="aspect-[16/10] bg-zinc-950 flex items-center justify-center p-4 overflow-hidden border-b border-zinc-800/40 relative">
-                          <img
-                            src={firstImg}
-                            alt={p.title}
-                            className={`transition-transform duration-500 group-hover:scale-105 ${isLogo ? 'max-h-24 max-w-[70%] object-contain' : 'w-full h-full object-cover'}`}
-                          />
+                          {hasError ? (
+                            <div className="flex flex-col items-center justify-center gap-1.5 text-zinc-600">
+                              <ImageIcon className="w-5 h-5 text-zinc-600" />
+                              <span className="text-[9px] font-mono uppercase text-zinc-500">Non disponible</span>
+                            </div>
+                          ) : (
+                            <img
+                              src={firstImg}
+                              alt={p.title}
+                              onError={() => setImageErrorState(prev => ({ ...prev, [`drawer_${p.id}`]: true }))}
+                              className={`transition-transform duration-500 group-hover:scale-105 ${isLogo ? 'max-h-24 max-w-[70%] object-contain' : 'w-full h-full object-cover'}`}
+                            />
+                          )}
                           <span className="absolute top-2.5 left-2.5 px-2 py-0.5 text-[9px] font-mono uppercase rounded bg-black/70 border border-zinc-800 text-zinc-300">
                             {settings.categories?.find(c => c.id === p.category)?.label || p.category}
                           </span>
@@ -955,19 +979,33 @@ export default function App() {
 
             <div className="p-6 sm:p-8 space-y-6">
               <div className="relative rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-800/60 flex items-center justify-center p-4 min-h-[320px] max-h-[520px]">
-                {!modalImageLoaded && (
+                {!modalImageLoaded && !imageErrorState[`modal_${selectedProject.id}_${modalImageIndex}`] && (
                   <div className="absolute inset-0 bg-zinc-950 animate-pulse flex flex-col items-center justify-center gap-3">
                     <Loader2 className="w-7 h-7 text-zinc-600 animate-spin" />
                     <span className="text-xs font-mono text-zinc-500">Affichage haute résolution...</span>
                   </div>
                 )}
-                <img
-                  src={(selectedProject.images && selectedProject.images[modalImageIndex]) || selectedProject.image}
-                  alt={selectedProject.title}
-                  onLoad={() => setModalImageLoaded(true)}
-                  className={`object-contain max-h-[480px] transition-opacity duration-300 ${selectedProject.category === 'logo' ? 'max-w-[70%]' : 'w-full'
-                    } ${modalImageLoaded ? 'opacity-100' : 'opacity-0'}`}
-                />
+
+                {imageErrorState[`modal_${selectedProject.id}_${modalImageIndex}`] ? (
+                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 py-12">
+                    <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+                      <ImageIcon className="w-7 h-7" />
+                    </div>
+                    <span className="text-xs font-mono">Impossible de charger cette image</span>
+                  </div>
+                ) : (
+                  <img
+                    src={(selectedProject.images && selectedProject.images[modalImageIndex]) || selectedProject.image}
+                    alt={selectedProject.title}
+                    onLoad={() => setModalImageLoaded(true)}
+                    onError={() => {
+                      setModalImageLoaded(true);
+                      setImageErrorState(prev => ({ ...prev, [`modal_${selectedProject.id}_${modalImageIndex}`]: true }));
+                    }}
+                    className={`object-contain max-h-[480px] transition-opacity duration-300 ${selectedProject.category === 'logo' ? 'max-w-[70%]' : 'w-full'
+                      } ${modalImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  />
+                )}
 
                 {selectedProject.images && selectedProject.images.length > 1 && (
                   <>
@@ -994,22 +1032,36 @@ export default function App() {
               </div>
 
               {selectedProject.images && selectedProject.images.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {selectedProject.images.map((img, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        if (modalImageIndex !== idx) {
-                          setModalImageLoaded(false);
-                          setModalImageIndex(idx);
-                        }
-                      }}
-                      className={`relative w-16 h-16 rounded-lg overflow-hidden border shrink-0 transition-all ${modalImageIndex === idx ? 'border-white scale-105' : 'border-zinc-800 opacity-60 hover:opacity-100'
-                        }`}
-                    >
-                      <img src={img} alt="" className="w-full h-full object-cover" />
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2.5 overflow-x-auto p-2 no-scrollbar">
+                  {selectedProject.images.map((img, idx) => {
+                    const hasThumbError = imageErrorState[`modal_thumb_${selectedProject.id}_${idx}`];
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          if (modalImageIndex !== idx) {
+                            setModalImageLoaded(false);
+                            setModalImageIndex(idx);
+                          }
+                        }}
+                        className={`relative w-16 h-16 rounded-lg overflow-hidden border shrink-0 transition-all ${modalImageIndex === idx ? 'border-white scale-105' : 'border-zinc-800 opacity-60 hover:opacity-100'
+                          }`}
+                      >
+                        {hasThumbError ? (
+                          <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-500">
+                            <ImageIcon className="w-4 h-4 text-zinc-600" />
+                          </div>
+                        ) : (
+                          <img
+                            src={img}
+                            alt=""
+                            onError={() => setImageErrorState(prev => ({ ...prev, [`modal_thumb_${selectedProject.id}_${idx}`]: true }))}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
@@ -1193,10 +1245,23 @@ export default function App() {
                           .filter(p => p.title.toLowerCase().includes(adminProjectSearch.toLowerCase()) || p.client?.toLowerCase().includes(adminProjectSearch.toLowerCase()))
                           .map(p => {
                             const firstImg = (p.images && p.images[0]) || p.image;
+                            const hasAdminThumbError = imageErrorState[`admin_thumb_${p.id}`];
+
                             return (
                               <div key={p.id} className="p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 flex items-center justify-between gap-4 hover:border-zinc-700 transition-colors">
                                 <div className="flex items-center gap-3.5 overflow-hidden">
-                                  <img src={firstImg} alt="" className="w-12 h-12 rounded-xl object-cover bg-zinc-950 border border-zinc-800 shrink-0" />
+                                  {hasAdminThumbError ? (
+                                    <div className="w-12 h-12 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center shrink-0 text-zinc-500">
+                                      <ImageIcon className="w-5 h-5 text-zinc-600" />
+                                    </div>
+                                  ) : (
+                                    <img
+                                      src={firstImg}
+                                      alt=""
+                                      onError={() => setImageErrorState(prev => ({ ...prev, [`admin_thumb_${p.id}`]: true }))}
+                                      className="w-12 h-12 rounded-xl object-cover bg-zinc-950 border border-zinc-800 shrink-0"
+                                    />
+                                  )}
                                   <div className="truncate">
                                     <h5 className="text-xs font-semibold text-white truncate">{p.title}</h5>
                                     <span className="text-[11px] text-zinc-400 block truncate">{p.client} &bull; {p.year}</span>
