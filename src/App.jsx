@@ -151,7 +151,34 @@ export default function App() {
   const drawerContainerRef = useRef(null);
 
   const [imageLoadedState, setImageLoadedState] = useState({});
+  const [contactCountryCode, setContactCountryCode] = useState('+213');
+  const FRENCH_SPEAKING_COUNTRIES = [
+    { code: 'dz', dial: '+213', name: 'Algérie' },
+    { code: 'fr', dial: '+33', name: 'France' },
+    { code: 'be', dial: '+32', name: 'Belgique' },
+    { code: 'ch', dial: '+41', name: 'Suisse' },
+    { code: 'ca', dial: '+1', name: 'Canada' },
+    { code: 'lu', dial: '+352', name: 'Luxembourg' },
+    { code: 'mc', dial: '+377', name: 'Monaco' },
+    { code: 'ma', dial: '+212', name: 'Maroc' },
+    { code: 'tn', dial: '+216', name: 'Tunisie' },
+    { code: 'ci', dial: '+225', name: "Côte d'Ivoire" },
+    { code: 'sn', dial: '+221', name: 'Sénégal' },
+    { code: 'cm', dial: '+237', name: 'Cameroun' },
+    { code: 'cd', dial: '+243', name: 'RDC' },
+    { code: 'cg', dial: '+242', name: 'Congo' },
+    { code: 'ml', dial: '+223', name: 'Mali' },
+    { code: 'bf', dial: '+226', name: 'Burkina Faso' },
+    { code: 'ne', dial: '+227', name: 'Niger' },
+    { code: 'tg', dial: '+228', name: 'Togo' },
+    { code: 'bj', dial: '+229', name: 'Bénin' },
+    { code: 'ga', dial: '+241', name: 'Gabon' },
+    { code: 'mg', dial: '+261', name: 'Madagascar' }
+  ];
 
+  const [selectedCountry, setSelectedCountry] = useState(FRENCH_SPEAKING_COUNTRIES[0]);
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const countryDropdownRef = useRef(null);
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => {
@@ -235,6 +262,16 @@ export default function App() {
       }
     });
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target)) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleMouseDown = (e) => {
@@ -607,7 +644,7 @@ export default function App() {
         },
         body: JSON.stringify({
           name: contactName,
-          phone: contactPhoneInput,
+          phone: `${selectedCountry.dial} ${contactPhoneInput}`,
           subject: contactSubject,
           message: contactMessage
         })
@@ -1813,16 +1850,74 @@ export default function App() {
                 className="w-full px-4 py-2.5 bg-zinc-950/60 border border-zinc-800 focus:border-zinc-600 rounded-lg text-xs text-zinc-200 outline-none"
               />
             </div>
-            <div>
+            <div className="relative" ref={countryDropdownRef}>
               <label className="text-xs text-zinc-400 block mb-1">Votre numéro de téléphone</label>
-              <input
-                type="tel"
-                required
-                value={contactPhoneInput}
-                onChange={(e) => setContactPhoneInput(e.target.value)}
-                placeholder="Ex: 06 12 34 56 78"
-                className="w-full px-4 py-2.5 bg-zinc-950/60 border border-zinc-800 focus:border-zinc-600 rounded-lg text-xs text-zinc-200 outline-none"
-              />
+
+              <div className="flex items-center bg-zinc-950/60 border border-zinc-800 focus-within:border-zinc-600 rounded-lg overflow-visible transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                  className="flex items-center gap-2 px-3 py-2.5 bg-zinc-900/40 hover:bg-zinc-800/60 border-r border-zinc-800 transition-colors shrink-0 outline-none rounded-l-lg"
+                >
+                  <img
+                    src={`https://flagcdn.com/20x15/${selectedCountry.code}.png`}
+                    srcSet={`https://flagcdn.com/40x30/${selectedCountry.code}.png 2x`}
+                    width="18"
+                    height="13"
+                    alt={selectedCountry.name}
+                    className="rounded-[2px] object-cover shadow-sm pointer-events-none"
+                  />
+                  <span className="text-xs font-mono font-medium text-zinc-200 select-none">
+                    {selectedCountry.dial}
+                  </span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-200 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                <input
+                  type="tel"
+                  required
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="0555000000"
+                  value={contactPhoneInput}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setContactPhoneInput(val);
+                  }}
+                  className="flex-1 px-3.5 py-2.5 bg-transparent text-xs text-zinc-200 outline-none font-mono placeholder:text-zinc-600"
+                />
+              </div>
+
+              {isCountryDropdownOpen && (
+                <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-72 max-h-60 overflow-y-auto bg-[#111114] border border-zinc-800 rounded-xl shadow-2xl p-1.5 scrollbar-thin scrollbar-thumb-zinc-800">
+                  {FRENCH_SPEAKING_COUNTRIES.map((item) => (
+                    <button
+                      key={item.code}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCountry(item);
+                        setIsCountryDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors ${selectedCountry.code === item.code
+                          ? 'bg-zinc-800 text-white font-medium'
+                          : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={`https://flagcdn.com/20x15/${item.code}.png`}
+                          width="18"
+                          height="13"
+                          alt={item.name}
+                          className="rounded-[2px] object-cover pointer-events-none"
+                        />
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="font-mono text-zinc-500 text-[11px]">{item.dial}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <label className="text-xs text-zinc-400 block mb-1">Sujet du projet</label>
