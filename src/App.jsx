@@ -313,22 +313,39 @@ export default function App() {
   };
 
   const uploadFileToHost = async (file) => {
-    const key = settings.imageApiKey || tempSettings.imageApiKey;
-    if (!key) {
-      throw new Error("Clé d'API d'hébergement manquante. Configurez-la dans l'onglet Réseaux & Telegram.");
+    const webhookUrl = settings.telegramWebhookUrl || tempSettings.telegramWebhookUrl;
+    if (!webhookUrl) {
+      throw new Error("L'URL de relais Google Apps Script n'est pas configurée.");
     }
-    const form = new FormData();
-    form.append('image', file);
 
-    const res = await fetch(`https://api.imgbb.com/1/upload?key=${key}`, {
-      method: 'POST',
-      body: form
+    const base64Data = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
     });
+
+    const fileExtension = file.name.split('.').pop().toLowerCase() || 'png';
+
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'uploadImage',
+        extension: fileExtension,
+        base64Content: base64Data
+      })
+    });
+
     const json = await res.json();
     if (!json.success) {
-      throw new Error(json.error?.message || "Erreur lors de l'hébergement de l'image");
+      throw new Error(json.error || "Échec du téléversement vers GitHub.");
     }
-    return json.data.url;
+
+    return json.url;
   };
 
   const handleDirectImageUpload = async (e) => {
@@ -1899,8 +1916,8 @@ export default function App() {
                         setIsCountryDropdownOpen(false);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors ${selectedCountry.code === item.code
-                          ? 'bg-zinc-800 text-white font-medium'
-                          : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+                        ? 'bg-zinc-800 text-white font-medium'
+                        : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
                         }`}
                     >
                       <div className="flex items-center gap-2.5">
