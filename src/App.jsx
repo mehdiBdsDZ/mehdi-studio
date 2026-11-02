@@ -61,6 +61,30 @@ const FacebookIcon = ({ className = "w-4 h-4" }) => (
   </svg>
 );
 
+const FRENCH_SPEAKING_COUNTRIES = [
+  { code: 'dz', dial: '+213', name: 'Algérie' },
+  { code: 'fr', dial: '+33', name: 'France' },
+  { code: 'be', dial: '+32', name: 'Belgique' },
+  { code: 'ch', dial: '+41', name: 'Suisse' },
+  { code: 'ca', dial: '+1', name: 'Canada' },
+  { code: 'lu', dial: '+352', name: 'Luxembourg' },
+  { code: 'mc', dial: '+377', name: 'Monaco' },
+  { code: 'ma', dial: '+212', name: 'Maroc' },
+  { code: 'tn', dial: '+216', name: 'Tunisie' },
+  { code: 'ci', dial: '+225', name: "Côte d'Ivoire" },
+  { code: 'sn', dial: '+221', name: 'Sénégal' },
+  { code: 'cm', dial: '+237', name: 'Cameroun' },
+  { code: 'cd', dial: '+243', name: 'RDC' },
+  { code: 'cg', dial: '+242', name: 'Congo' },
+  { code: 'ml', dial: '+223', name: 'Mali' },
+  { code: 'bf', dial: '+226', name: 'Burkina Faso' },
+  { code: 'ne', dial: '+227', name: 'Niger' },
+  { code: 'tg', dial: '+228', name: 'Togo' },
+  { code: 'bj', dial: '+229', name: 'Bénin' },
+  { code: 'ga', dial: '+241', name: 'Gabon' },
+  { code: 'mg', dial: '+261', name: 'Madagascar' }
+];
+
 const DEFAULT_SETTINGS = {
   name: "Mehdi",
   avatarLogo: "",
@@ -76,7 +100,6 @@ const DEFAULT_SETTINGS = {
   contactGithub: "https://github.com/mehdiBdsDZ",
   contactFacebook: "https://facebook.com",
   telegramWebhookUrl: "",
-  imageApiKey: "",
   heroImages: [
     "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1920&q=80",
     "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1920&q=80",
@@ -140,6 +163,10 @@ export default function App() {
   const [newCatLabel, setNewCatLabel] = useState('');
   const [newCatId, setNewCatId] = useState('');
 
+  const [selectedCountry, setSelectedCountry] = useState(FRENCH_SPEAKING_COUNTRIES[0]);
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const countryDropdownRef = useRef(null);
+
   const [contactName, setContactName] = useState('');
   const [contactPhoneInput, setContactPhoneInput] = useState('');
   const [contactSubject, setContactSubject] = useState('');
@@ -151,40 +178,23 @@ export default function App() {
   const drawerContainerRef = useRef(null);
 
   const [imageLoadedState, setImageLoadedState] = useState({});
-  const [contactCountryCode, setContactCountryCode] = useState('+213');
-  const FRENCH_SPEAKING_COUNTRIES = [
-    { code: 'dz', dial: '+213', name: 'Algérie' },
-    { code: 'fr', dial: '+33', name: 'France' },
-    { code: 'be', dial: '+32', name: 'Belgique' },
-    { code: 'ch', dial: '+41', name: 'Suisse' },
-    { code: 'ca', dial: '+1', name: 'Canada' },
-    { code: 'lu', dial: '+352', name: 'Luxembourg' },
-    { code: 'mc', dial: '+377', name: 'Monaco' },
-    { code: 'ma', dial: '+212', name: 'Maroc' },
-    { code: 'tn', dial: '+216', name: 'Tunisie' },
-    { code: 'ci', dial: '+225', name: "Côte d'Ivoire" },
-    { code: 'sn', dial: '+221', name: 'Sénégal' },
-    { code: 'cm', dial: '+237', name: 'Cameroun' },
-    { code: 'cd', dial: '+243', name: 'RDC' },
-    { code: 'cg', dial: '+242', name: 'Congo' },
-    { code: 'ml', dial: '+223', name: 'Mali' },
-    { code: 'bf', dial: '+226', name: 'Burkina Faso' },
-    { code: 'ne', dial: '+227', name: 'Niger' },
-    { code: 'tg', dial: '+228', name: 'Togo' },
-    { code: 'bj', dial: '+229', name: 'Bénin' },
-    { code: 'ga', dial: '+241', name: 'Gabon' },
-    { code: 'mg', dial: '+261', name: 'Madagascar' }
-  ];
 
-  const [selectedCountry, setSelectedCountry] = useState(FRENCH_SPEAKING_COUNTRIES[0]);
-  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
-  const countryDropdownRef = useRef(null);
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => {
       setNotification(null);
     }, 4000);
   };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target)) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const heroList = settings.heroImages || [];
@@ -244,34 +254,10 @@ export default function App() {
   }, [loading, activeTab, searchQuery, shouldScroll]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setIsAuthenticated(true);
-        try {
-          const secretsSnap = await getDoc(doc(db, 'config', 'secrets'));
-          if (secretsSnap.exists()) {
-            const data = secretsSnap.data();
-            setTempSettings(prev => ({ ...prev, imageApiKey: data.imageApiKey || '' }));
-            setSettings(prev => ({ ...prev, imageApiKey: data.imageApiKey || '' }));
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      } else {
-        setIsAuthenticated(false);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(Boolean(user));
     });
     return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target)) {
-        setIsCountryDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleMouseDown = (e) => {
@@ -315,7 +301,7 @@ export default function App() {
   const uploadFileToHost = async (file) => {
     const webhookUrl = settings.telegramWebhookUrl || tempSettings.telegramWebhookUrl;
     if (!webhookUrl) {
-      throw new Error("L'URL de relais Google Apps Script n'est pas configurée.");
+      throw new Error("L'URL du relais Google Apps Script n'est pas configurée dans l'admin.");
     }
 
     const base64Data = await new Promise((resolve, reject) => {
@@ -333,6 +319,10 @@ export default function App() {
 
     const res = await fetch(webhookUrl, {
       method: 'POST',
+      redirect: 'follow',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
       body: JSON.stringify({
         action: 'uploadImage',
         extension: fileExtension,
@@ -367,7 +357,7 @@ export default function App() {
         return existing + uploadedUrls.join('\n');
       });
 
-      showNotification(`${uploadedUrls.length} image(s) hébergée(s) avec succès !`);
+      showNotification(`${uploadedUrls.length} image(s) hébergée(s) avec succès sur GitHub !`);
     } catch (err) {
       showNotification(err.message, 'error');
     } finally {
@@ -382,10 +372,10 @@ export default function App() {
 
     try {
       setIsUploadingToApi(true);
-      showNotification("Téléversement du logo vers l'API...");
+      showNotification("Téléversement du logo vers GitHub...");
       const url = await uploadFileToHost(file);
       setTempSettings(prev => ({ ...prev, avatarLogo: url }));
-      showNotification('Logo hébergé avec succès !');
+      showNotification('Logo hébergé avec succès sur GitHub !');
     } catch (err) {
       showNotification(err.message, 'error');
     } finally {
@@ -533,18 +523,15 @@ export default function App() {
         .map(url => url.trim())
         .filter(Boolean);
 
-      const { imageApiKey, ...publicSettings } = tempSettings;
-
       const finalPublicSettings = {
-        ...publicSettings,
+        ...tempSettings,
         heroImages: heroImagesArray
       };
 
       await setDoc(doc(db, 'config', 'general'), finalPublicSettings);
-      await setDoc(doc(db, 'config', 'secrets'), { imageApiKey: imageApiKey || '' });
 
       setSettings(tempSettings);
-      showNotification('Paramètres et clés enregistrés en toute sécurité');
+      showNotification('Paramètres enregistrés avec succès');
     } catch (err) {
       showNotification('Erreur de sauvegarde : ' + err.message, 'error');
     } finally {
@@ -1098,7 +1085,9 @@ export default function App() {
                             setModalImageIndex(idx);
                           }
                         }}
-                        className={`relative w-16 h-16 rounded-lg overflow-hidden border shrink-0 transition-all ${modalImageIndex === idx ? 'border-white scale-105' : 'border-zinc-800 opacity-60 hover:opacity-100'
+                        className={`relative w-16 h-16 rounded-xl overflow-hidden shrink-0 transition-all ${modalImageIndex === idx
+                            ? 'ring-2 ring-white ring-offset-2 ring-offset-[#111114]'
+                            : 'opacity-50 hover:opacity-100 border border-zinc-800'
                           }`}
                       >
                         {hasThumbError ? (
@@ -1235,7 +1224,7 @@ export default function App() {
                     { id: 'projects', label: 'Projets existants', icon: FolderKanban, badge: projects.length },
                     { id: 'form', label: editingProject ? 'Modifier le projet' : 'Ajouter un projet', icon: Plus },
                     { id: 'general', label: 'Identité & Textes', icon: Sliders },
-                    { id: 'contact', label: 'Réseaux & Telegram', icon: MessageSquareShare },
+                    { id: 'contact', label: 'Réseaux & Relais', icon: MessageSquareShare },
                     { id: 'categories', label: 'Ordre des Catégories', icon: Layers }
                   ].map(tab => {
                     const Icon = tab.icon;
@@ -1382,12 +1371,12 @@ export default function App() {
                       </div>
 
                       <div>
-                        <label className="text-xs text-zinc-400 block mb-1">Téléversement direct d'images (Cloud API)</label>
+                        <label className="text-xs text-zinc-400 block mb-1">Téléversement direct d'images (CDN GitHub)</label>
                         <label className={`flex items-center justify-center gap-2 w-full py-3 bg-zinc-900 hover:bg-zinc-850 border border-dashed border-zinc-700 rounded-xl cursor-pointer text-xs text-zinc-300 hover:text-white transition-colors mb-2 ${isUploadingToApi ? 'opacity-50 pointer-events-none' : ''}`}>
                           {isUploadingToApi ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin text-white" />
-                              <span>Envoi vers le cloud en cours...</span>
+                              <span>Envoi haute fidélité vers GitHub...</span>
                             </>
                           ) : (
                             <>
@@ -1497,7 +1486,7 @@ export default function App() {
                           />
                         </div>
                         <label className="flex items-center justify-center gap-2 w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-dashed border-zinc-700 rounded-xl cursor-pointer text-xs text-zinc-400 hover:text-white transition-colors">
-                          <Upload className="w-3.5 h-3.5" /> Charger un logo via l'API
+                          <Upload className="w-3.5 h-3.5" /> Charger un logo via GitHub
                           <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                         </label>
                       </div>
@@ -1566,32 +1555,8 @@ export default function App() {
                   {adminTab === 'contact' && (
                     <form onSubmit={handleSaveSettings} className="space-y-5 max-w-2xl">
                       <div>
-                        <h4 className="text-base font-semibold text-white">Canaux de communication & Clé API d'upload</h4>
-                        <p className="text-xs text-zinc-500">Configurez votre clé d'hébergement d'images et la réception Telegram.</p>
-                      </div>
-
-                      <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-white">Clé API d'hébergement d'images (ImgBB API)</span>
-                          <a
-                            href="https://api.imgbb.com/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[11px] text-zinc-400 hover:text-white underline"
-                          >
-                            Obtenir une clé gratuite
-                          </a>
-                        </div>
-                        <input
-                          type="text"
-                          placeholder="Collez votre clé API ImgBB ici..."
-                          value={tempSettings.imageApiKey || ''}
-                          onChange={(e) => setTempSettings({ ...tempSettings, imageApiKey: e.target.value })}
-                          className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-white outline-none font-mono"
-                        />
-                        <p className="text-[11px] text-zinc-500">
-                          Permet au bouton « Importer » d'envoyer directement vos fichiers locaux dans le cloud sans blocage réseau.
-                        </p>
+                        <h4 className="text-base font-semibold text-white">Canaux de communication & Relais</h4>
+                        <p className="text-xs text-zinc-500">Configurez vos liens de contact et l'URL du relais Google Apps Script.</p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
@@ -1654,7 +1619,7 @@ export default function App() {
                       </div>
 
                       <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-2">
-                        <span className="text-xs font-semibold text-white block">Relais de Contact Sécurisé (Google Apps Script / Webhook)</span>
+                        <span className="text-xs font-semibold text-white block">Relais Sécurisé (Google Apps Script / Webhook)</span>
                         <input
                           type="text"
                           placeholder="https://script.google.com/macros/s/.../exec"
@@ -1663,7 +1628,7 @@ export default function App() {
                           className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-white outline-none font-mono text-[11px]"
                         />
                         <p className="text-[11px] text-zinc-500">
-                          Collez l'URL de votre application Web Google Apps Script déployée. Vos identifiants de bot Telegram restent ainsi invisibles pour les visiteurs.
+                          Collez l'URL de votre application Web Google Apps Script déployée. Elle gère à la fois l'upload haute fidélité vers GitHub et les alertes Telegram en toute sécurité.
                         </p>
                       </div>
 
@@ -1867,6 +1832,7 @@ export default function App() {
                 className="w-full px-4 py-2.5 bg-zinc-950/60 border border-zinc-800 focus:border-zinc-600 rounded-lg text-xs text-zinc-200 outline-none"
               />
             </div>
+
             <div className="relative" ref={countryDropdownRef}>
               <label className="text-xs text-zinc-400 block mb-1">Votre numéro de téléphone</label>
 
@@ -1916,8 +1882,8 @@ export default function App() {
                         setIsCountryDropdownOpen(false);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors ${selectedCountry.code === item.code
-                        ? 'bg-zinc-800 text-white font-medium'
-                        : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+                          ? 'bg-zinc-800 text-white font-medium'
+                          : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
                         }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -1936,6 +1902,7 @@ export default function App() {
                 </div>
               )}
             </div>
+
             <div>
               <label className="text-xs text-zinc-400 block mb-1">Sujet du projet</label>
               <input
